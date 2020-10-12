@@ -7,7 +7,10 @@ import {
 } from "react-router-dom";
 import Auth from "./Auth";
 import Chat from "./Chat";
+import Custom from "./Custom";
+import Lobby from "./Lobby";
 import Reconnect from "./Reconnect";
+import Relay from "./Relay";
 import State from "./State";
 import './App.css';
 
@@ -38,6 +41,12 @@ function App() {
             <Route path="/lobby">
               <Lobby />
             </Route>
+            <Route path="/relay">
+              <Relay />
+            </Route>
+            <Route path="/custom">
+              <Custom />
+            </Route>
             <Route path="/">
               <nav>
                 <ul>
@@ -58,6 +67,12 @@ function App() {
                   </li>
                   <li>
                     <Link to="/lobby">lobby</Link>
+                  </li>
+                  <li>
+                    <Link to="/relay">relay</Link>
+                  </li>
+                  <li>
+                    <Link to="/custom">custom</Link>
                   </li>
                 </ul>
               </nav>

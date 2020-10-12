@@ -2,63 +2,101 @@ import React,{useEffect,useRef,useState} from 'react'
 import * as Colyseus from 'colyseus.js'
 
 function Lobby() {
+  const allRooms = useRef(null)
   const client = useRef(null)
-  const message = useRef(null)
-  const room = useRef(null)
+  const lobby = useRef(null)
   
   useEffect(() => {
     const url = 'ws://localhost:2567'
     
     client.current = new Colyseus.Client(url);
     
-    client.current.joinOrCreate("chat").then(rm => {
-      console.log("joined");
-      room.current = rm
-      
-      rm.onStateChange.once(function(state) {
-        console.log("initial room state:", state);
-      });
-      
-      // new room state
-      rm.onStateChange(function(state) {
-        // this signal is triggered on each patch
-      });
-      
-      // listen to patches coming from the server
-      rm.onMessage("messages", function(message) {
-        var p = document.createElement("p");
-        p.innerText = message;
-        document.querySelector("#messages").appendChild(p);
-      });
-
-      console.log(room)
-    })
   }, [])
 
-  const submitMessage = e=>{
-    e.preventDefault();
-    
-    room.current.send("message", message.current.value);
-    
-    message.current.value = "";
+  function join () {
+    // Logged into your app and Facebook.
+    client.current.joinOrCreate("lobby").then(room_instance => {
+        lobby.current = room_instance;
+        onjoin();
+        console.log("Joined lobby room!");
+
+    }).catch(e => {
+        console.error("Error", e);
+    });
   }
-  
+
+  function onjoin() {
+      lobby.current.onMessage("rooms", (rooms) => {
+          allRooms.current = rooms;
+          update_full_list();
+
+          console.log("Received full list of rooms:", allRooms.current);
+      });
+
+      lobby.current.onMessage("+", ([roomId, roomInstance]) => {
+          const roomIndex = allRooms.current.findIndex((room) => room.roomId === roomId);
+
+          if (roomIndex !== -1) {
+              console.log("Room update:", roomInstance);
+              allRooms.current[roomIndex] = roomInstance;
+
+          } else {
+              console.log("New room", roomInstance);
+              allRooms.current.push(roomInstance);
+          }
+
+          update_full_list();
+      });
+
+      lobby.current.onMessage("-", (roomId) => {
+          console.log("Room removed", roomId);
+          allRooms.current = allRooms.current.filter((room) => room.roomId !== roomId);
+          update_full_list();
+      });
+
+      lobby.current.onLeave(() => {
+          allRooms.current = [];
+          update_full_list();
+          console.log("Bye, bye!");
+      });
+  }
+
+  function update_full_list() {
+    var el = document.getElementById('all_rooms');
+    el.innerHTML = allRooms.current.map(function(room) {
+        return "<li><code>" + JSON.stringify(room) + "</code></li>";
+    }).join("\n");
+
+  }
+
+  function leave() {
+    if (lobby.current) {
+      lobby.current.leave();
+
+    } else {
+      console.warn("Not connected.");
+    }
+  }
+
   return (
     <div>
-      <h1>
-        <a href="https://github.com/colyseus/colyseus-examples"><img src="https://cdn.jsdelivr.net/gh/colyseus/colyseus@master/media/header.png" height="100" alt="colyseus" /></a>
-      </h1>
-      
-      <p>This room doesn't use the room's state. It just broadcast messages through "broadcast" method.</p>
-      
-      <strong>Messages</strong><br/>
-      
-      <form onSubmit={submitMessage}>
-        <input type="text" ref={message} autoFocus/>
-        <input type="submit" value="send" />
-      </form>
-      
-      <div id="messages"></div>
+      <p>This example shows how to use <code>LobbyRoom</code>:</p>
+      <ul>
+          <li>When you join a lobby, you'll receive the current list of rooms</li>
+          <li>Then, you'll receive updates when rooms are created, updated, or removed.</li>
+          <li>(All rooms on colyseus-examples have <code>.enableRealtimeListing()</code>, try joining other demos to see realtime updates here)</li>
+          <li><a href="https://docs.colyseus.io/builtin-rooms/lobby/">See documentation</a></li>
+      </ul>
+
+      <p>Open Developer Tools for log messages.</p>
+
+      <p><strong>Commands</strong></p>
+
+      <button onClick={join}>join lobby</button>
+      <button onClick={leave}>leave lobby</button>
+
+      <h2>All rooms:</h2>
+      <ul id="all_rooms"></ul>
     </div>
     )
   }
